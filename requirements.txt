@@ -1,0 +1,7 @@
+flask
+requests
+selenium
+gunicorn
+vaderSentiment
+matplotlib
+wordcloud

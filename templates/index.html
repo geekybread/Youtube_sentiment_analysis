@@ -1,0 +1,37 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube Sentiment Analysis</title>
+</head>
+<body>
+  <h2>YouTube Sentiment Analyzer</h2>
+  <form action="/analyze" method="post">
+    <input type="text" name="video_url" placeholder="Enter YouTube video URL" required>
+    <button type="submit">Analyze</button>
+  </form>
+
+  {% if summary %}
+    <h3>Results for: {{ video_title }}</h3>
+    <ul>
+      <li>Positive: {{ summary['positive'] }}</li>
+      <li>Neutral: {{ summary['neutral'] }}</li>
+      <li>Negative: {{ summary['negative'] }}</li>
+    </ul>
+
+    <h4>Sentiment Pie Chart</h4>
+    <img src="{{ url_for('static', filename=chart) }}" alt="Sentiment Pie Chart" width="300">
+
+    <h4>Word Cloud</h4>
+    <img src="{{ url_for('static', filename=wordcloud) }}" alt="Word Cloud" width="600">
+
+
+    <h4>Sample Comments</h4>
+    <ul>
+      {% for c in comments %}
+      <li><strong>{{ c.sentiment }} ({{ c.score }}):</strong> {{ c.text }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</body>
+</html>
