@@ -19,6 +19,7 @@ def scrape_comments(video_url, max_comments=100):
 
     # Get video title
     video_title = "Unknown Video"
+    channel_name = "Unknown Channel"
     video_api_url = "https://www.googleapis.com/youtube/v3/videos"
     video_params = {
         "part": "snippet",
@@ -32,6 +33,7 @@ def scrape_comments(video_url, max_comments=100):
         items = video_data.get("items")
         if items:
             video_title = items[0]["snippet"]["title"]
+            channel_name = items[0]["snippet"]["channelTitle"]
     else:
         print("Warning: Could not fetch video title")
 
@@ -57,4 +59,4 @@ def scrape_comments(video_url, max_comments=100):
         if len(comments) >= max_comments:
             break
 
-    return comments, video_title
+    return video_id, comments, video_title, channel_name

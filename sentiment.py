@@ -1,25 +1,131 @@
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend for matplotlib
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+import torch
+import torch.nn.functional as F
+import re
+from youtube_transcript_api import YouTubeTranscriptApi
+import os, requests
 
-def analyze_sentiment(comments):
-    analyzer = SentimentIntensityAnalyzer()
-    results = {"positive": 0, "neutral": 0, "negative": 0}
-    analyzed = []
+def clean_text(text):
+    text = text.lower()
+    text = re.sub(r"http\S+", "", text)                  # remove URLs
+    text = re.sub(r"<.*?>", "", text)                    # remove HTML tags
+    text = re.sub(r"[^\w\s]", "", text)                  # remove punctuation/symbols
+    text = re.sub(r"\s+", " ", text).strip()             # remove extra spaces
+    return text
 
-    for c in comments:
-        score = analyzer.polarity_scores(c)
-        compound = score['compound']
-        if compound >= 0.05:
-            label = "positive"
-        elif compound <= -0.05:
-            label = "negative"
+
+def get_transcript(video_id):
+    try:
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+        text = " ".join([t["text"] for t in transcript])
+        return text
+    except Exception as e:
+        print(f"[Transcript Error] {e}")
+        return None
+    
+import textwrap
+
+HUGGINGFACE_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
+API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+
+def chunk_text(text, chunk_size=700):
+    words = text.strip().split()
+    for i in range(0, len(words), chunk_size):
+        yield " ".join(words[i:i + chunk_size])
+
+
+def summarize_chunk(chunk):
+    prompt = f"Explain the main topic and purpose of this YouTube video transcript:\n{chunk}"
+    payload = {"inputs": prompt}
+
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+        if response.status_code != 200:
+            print(f"[API Error] {response.status_code}: {response.text}")
+            return None
+
+        result = response.json()
+
+        if isinstance(result, list) and result:
+            # Support both Hugging Face response formats
+            return result[0].get("summary_text") or result[0].get("generated_text")
         else:
-            label = "neutral"
-        results[label] += 1
-        analyzed.append({"text": c, "sentiment": label, "score": compound})
+            print("[Unexpected Response]", result)
+            return None
 
-    return results, analyzed
+    except Exception as e:
+        print("[Request Error]", e)
+        return None
+
+
+def clean_summary(text):
+    if "Use the weekly Newsquiz" in text:
+        return text.split("Use the weekly Newsquiz")[0].strip()
+    return text
+
+
+def summarize_transcript(text):
+    text=clean_text(text)
+    if not text or len(text.strip()) < 20:
+        return "Transcript too short to summarize."
+
+    chunks = list(chunk_text(text, chunk_size=700))
+    summaries = []
+
+    for i, chunk in enumerate(chunks):
+        print(f"[Falcon] Analyzing chunk {i+1}/{len(chunks)}...")
+        summary = summarize_chunk(chunk)
+        if summary:
+            summaries.append(summary)
+
+    # Optional: Final compression summary
+    final_text = " ".join(summaries)
+    if len(final_text.split()) > 700:
+        final_text = " ".join(final_text.split()[:700])
+
+    final_summary = summarize_chunk(final_text)
+    final_summary = clean_summary(final_summary)
+
+    return final_summary or "Could not generate context."
+
+
+
+model_name = "distilbert-base-uncased-finetuned-sst-2-english"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSequenceClassification.from_pretrained(model_name)
+
+def analyze_sentiment(comments, threshold=0.95):
+    summary = {'positive': 0, 'neutral': 0, 'negative': 0}
+    detailed = []
+
+    for text in comments:
+        text = clean_text(text)
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
+        with torch.no_grad():
+            logits = model(**inputs).logits
+            probs = F.softmax(logits, dim=1)[0]
+            pred = torch.argmax(probs).item()
+            confidence = probs[pred].item()
+
+            if confidence < threshold:
+                sentiment = "neutral"
+            else:
+                sentiment = "positive" if pred == 1 else "negative"
+
+        summary[sentiment] += 1
+        detailed.append({
+            "text": text,
+            "sentiment": sentiment,
+            "confidence": round(confidence, 3)
+        })
+
+    return summary, detailed
+
 
 
 def plot_sentiment_pie(results):

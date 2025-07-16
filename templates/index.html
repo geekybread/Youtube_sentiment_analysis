@@ -3,19 +3,42 @@
 <html>
 <head>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <title>YouTube Sentiment Analysis</title>
+  <title>YouTube Comments Sentiment Analysis</title>
 </head>
 <body>
   <div class="container mt-4">
-    <h2 class="mb-4 text-center">🎬 YouTube Sentiment Analyzer</h2>
+    <h2 class="mb-4 text-center">🎬 YouTube Comments Sentiment Analyzer</h2>
     <form action="/analyze" method="POST" class="d-flex gap-2 mb-4">
       <input type="text" name="video_url" class="form-control" placeholder="Enter YouTube video URL" required>
       <button type="submit" class="btn btn-primary">Analyze</button>
     </form>
 
+    <!-- Spinner -->
+    <div id="loading" class="text-center" style="display:none;">
+        <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Analyzing...</span>
+        </div>
+        <p>Analyzing... Please wait</p>
+    </div>
 
+    {% if error %}
+      <div class="alert alert-danger text-center">
+        {{ error }}
+      </div>
+    {% endif %}
+
+    {% if loading %}
+      <div class="text-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    {% endif %}
     {% if summary %}
-        <h4 class="mt-4">Results for:</h4>
+
+        <h4 class="mt-4">Results for :</h4>
+        <h5 class="text-primary">{{ video_title }}</h5>
+        <h6 class="text-muted">by {{ channel_name }}</h6>
         <div class="row text-center mb-4">
             <div class="col-md-4">
               <div class="alert alert-success">😊 Positive: {{ summary.positive }}</div>
@@ -27,7 +50,11 @@
               <div class="alert alert-danger">😠 Negative: {{ summary.negative }}</div>
             </div>
           </div>
-          
+        
+        {% if video_summary %}
+          <h4 class="mt-4">📄 Video Summary  (It is still under work so the summary generated maybe incorrect)</h4>
+          <div class="alert alert-info">{{ video_summary }}</div>
+        {% endif %}
 
         <div class="row">
             <div class="col-md-6">
@@ -59,5 +86,15 @@
           
     {% endif %}
   </div>
+
+  <script>
+    const form = document.querySelector('form');
+    const loadingDiv = document.getElementById('loading');
+  
+    form.addEventListener('submit', () => {
+      loadingDiv.style.display = 'block';
+    });
+  </script>
+  
 </body>
 </html>

@@ -2,6 +2,10 @@ flask
 requests
 selenium
 gunicorn
-vaderSentiment
 matplotlib
 wordcloud
+transformers
+torch
+langdetect
+deep-translator
+youtube-transcript-api
