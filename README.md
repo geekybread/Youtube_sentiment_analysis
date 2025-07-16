@@ -19,7 +19,7 @@ Analyze the sentiment of comments on any YouTube video using AI-powered models �
 
 ## 🚀 Live App
 
-👉 [Click here to try the app](https://your-app-name.onrender.com)
+👉 [Click here to try the app]([https://your-app-name.onrender.com](https://youtube-video-sentiment.onrender.com/))
 
 ---
 
