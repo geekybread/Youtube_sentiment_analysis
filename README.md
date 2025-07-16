@@ -45,11 +45,3 @@ Analyze the sentiment of comments on any YouTube video using AI-powered models â
 | Data Source | YouTube Data API v3           |
 
 ---
-
-## ðŸ”§ Local Setup
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/geekybread/Youtube_sentiment_analysis.git
-cd Youtube_sentiment_analysis
