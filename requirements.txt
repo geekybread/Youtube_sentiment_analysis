@@ -1,11 +1,11 @@
 flask
 requests
-selenium
 gunicorn
 matplotlib
 wordcloud
-transformers
-torch
+# transformers
+# torch
 langdetect
 deep-translator
 youtube-transcript-api
+nltk
