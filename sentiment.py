@@ -2,12 +2,15 @@ import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend for matplotlib
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
-import torch
-import torch.nn.functional as F
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification, pipeline
+# import torch
+# import torch.nn.functional as F
 import re
 from youtube_transcript_api import YouTubeTranscriptApi
 import os, requests
+import nltk
+nltk.download('vader_lexicon')
+
 
 def clean_text(text):
     text = text.lower()
@@ -95,33 +98,30 @@ def summarize_transcript(text):
 
 
 
-model_name = "distilbert-base-uncased-finetuned-sst-2-english"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSequenceClassification.from_pretrained(model_name)
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
-def analyze_sentiment(comments, threshold=0.95):
+sia = SentimentIntensityAnalyzer()
+
+def analyze_sentiment(comments, threshold=0.05):
     summary = {'positive': 0, 'neutral': 0, 'negative': 0}
     detailed = []
 
     for text in comments:
-        text = clean_text(text)
-        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True)
-        with torch.no_grad():
-            logits = model(**inputs).logits
-            probs = F.softmax(logits, dim=1)[0]
-            pred = torch.argmax(probs).item()
-            confidence = probs[pred].item()
+        text_clean = clean_text(text)
+        score = sia.polarity_scores(text_clean)['compound']
 
-            if confidence < threshold:
-                sentiment = "neutral"
-            else:
-                sentiment = "positive" if pred == 1 else "negative"
+        if score >= threshold:
+            sentiment = 'positive'
+        elif score <= -threshold:
+            sentiment = 'negative'
+        else:
+            sentiment = 'neutral'
 
         summary[sentiment] += 1
         detailed.append({
             "text": text,
             "sentiment": sentiment,
-            "confidence": round(confidence, 3)
+            "confidence": round(abs(score), 3)
         })
 
     return summary, detailed
