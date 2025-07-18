@@ -13,6 +13,8 @@ nltk.download('vader_lexicon')
 
 
 def clean_text(text):
+    if not text:
+        return ""
     text = text.lower()
     text = re.sub(r"http\S+", "", text)                  # remove URLs
     text = re.sub(r"<.*?>", "", text)                    # remove HTML tags
@@ -29,8 +31,7 @@ def get_transcript(video_id):
     except Exception as e:
         print(f"[Transcript Error] {e}")
         return None
-    
-import textwrap
+
 
 HUGGINGFACE_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
 API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
@@ -73,6 +74,8 @@ def clean_summary(text):
 
 
 def summarize_transcript(text):
+    if not text:
+        raise ValueError("Transcript is empty or unavailable.")
     text=clean_text(text)
     if not text or len(text.strip()) < 20:
         return "Transcript too short to summarize."
