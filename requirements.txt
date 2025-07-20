@@ -9,3 +9,4 @@ langdetect
 deep-translator
 youtube-transcript-api
 nltk
+seleniumwebdriver-manager

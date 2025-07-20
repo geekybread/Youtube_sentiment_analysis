@@ -1,7 +1,8 @@
 # app.py
 from flask import Flask, render_template, request
 from scraper import scrape_comments
-from sentiment import analyze_sentiment, plot_sentiment_pie, generate_wordcloud, get_transcript, summarize_transcript
+from sentiment import analyze_sentiment, plot_sentiment_pie, generate_wordcloud, summarize_transcript
+from selenium_transcript import get_transcript
 
 app = Flask(__name__)
 
@@ -20,7 +21,7 @@ def analyze():
     print("<--------------------Sentiment analysis completed ------------------->")
     plot_sentiment_pie(summary) 
     generate_wordcloud([c['text'] for c in detailed]) 
-    transcript = get_transcript(video_id)
+    transcript = get_transcript(url, headless=True)
     video_summary = summarize_transcript(transcript)
     return render_template('index.html', summary=summary, comments=detailed, video_title=video_title, channel_name=channel_name, chart='sentiment_pie.png', wordcloud='wordcloud.png', video_summary=video_summary)
 
