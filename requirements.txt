@@ -7,8 +7,8 @@ wordcloud
 # torch
 langdetect
 deep-translator
-youtube-transcript-api
+# youtube-transcript-api
 nltk
-selenium
-webdriver-manager
-TextBlob
+# selenium
+# webdriver-manager
+# TextBlob
