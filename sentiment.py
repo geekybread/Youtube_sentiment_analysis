@@ -7,9 +7,19 @@ from wordcloud import WordCloud
 # import torch.nn.functional as F
 import re
 from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api.proxies import WebshareProxyConfig
 import os, requests
 import nltk
 nltk.download('vader_lexicon')
+
+
+
+ytt_api = YouTubeTranscriptApi(
+    proxy_config=WebshareProxyConfig(
+        proxy_username="pcgmxnbc",
+        proxy_password="<vazvu89qhxtd",
+    )
+)
 
 
 def clean_text(text):
@@ -25,7 +35,7 @@ def clean_text(text):
 
 def get_transcript(video_id):
     try:
-        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['en'])
+        transcript = ytt_api.get_transcript(video_id, languages=['en'])
         text = " ".join([t["text"] for t in transcript])
         return text
     except Exception as e:
