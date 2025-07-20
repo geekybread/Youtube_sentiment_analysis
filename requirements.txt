@@ -5,8 +5,8 @@ matplotlib
 wordcloud
 # transformers
 # torch
-langdetect
-deep-translator
+# langdetect
+# deep-translator
 # youtube-transcript-api
 nltk
 selenium
