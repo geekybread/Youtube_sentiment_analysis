@@ -9,6 +9,6 @@ langdetect
 deep-translator
 # youtube-transcript-api
 nltk
-# selenium
-# webdriver-manager
+selenium
+webdriver-manager
 TextBlob
