@@ -11,4 +11,4 @@ deep-translator
 nltk
 # selenium
 # webdriver-manager
-# TextBlob
+TextBlob
