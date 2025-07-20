@@ -10,17 +10,17 @@ import re
 import os, requests
 import nltk
 nltk.download('vader_lexicon')
-
-
-def clean_text(text):
-    if not text:
-        return ""
-    text = text.lower()
-    text = re.sub(r"http\S+", "", text)                  # remove URLs
-    text = re.sub(r"<.*?>", "", text)                    # remove HTML tags
-    text = re.sub(r"[^\w\s]", "", text)                  # remove punctuation/symbols
-    text = re.sub(r"\s+", " ", text).strip()             # remove extra spaces
-    return text
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from textblob import TextBlob
+# def clean_text(text):
+#     if not text:
+#         return ""
+#     text = text.lower()
+#     text = re.sub(r"http\S+", "", text)                  # remove URLs
+#     text = re.sub(r"<.*?>", "", text)                    # remove HTML tags
+#     text = re.sub(r"[^\w\s]", "", text)                  # remove punctuation/symbols
+#     text = re.sub(r"\s+", " ", text).strip()             # remove extra spaces
+#     return text
 
 
 # def get_transcript(video_id):
@@ -32,6 +32,31 @@ def clean_text(text):
 #         print(f"[Transcript Error] {e}")
 #         return None
 
+def enhanced_clean_text(text):
+    """Enhanced text cleaning for better sentiment analysis"""
+    if not text:
+        return ""
+    
+    # Convert to lowercase
+    text = text.lower()
+    
+    # Handle common abbreviations and slang
+    text = re.sub(r'\bu\b', 'you', text)
+    text = re.sub(r'\bur\b', 'your', text)
+    text = re.sub(r'\bthx\b', 'thanks', text)
+    text = re.sub(r'\bomg\b', 'oh my god', text)
+    text = re.sub(r'\blol\b', 'laugh out loud', text)
+    text = re.sub(r'\bwtf\b', 'what the hell', text)
+    
+    # Handle repeated characters (e.g., "sooooo good" -> "so good")
+    text = re.sub(r'(.)\1{2,}', r'\1\1', text)
+    
+    # Handle negation contractions properly
+    text = re.sub(r"won't", "will not", text)
+    text = re.sub(r"can't", "cannot", text)
+    text = re.sub(r"n't", " not", text)
+    
+    return text
 
 HUGGINGFACE_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
 API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
@@ -76,7 +101,7 @@ def clean_summary(text):
 def summarize_transcript(text):
     if not text:
         raise ValueError("Transcript is empty or unavailable.")
-    text=clean_text(text)
+    text=enhanced_clean_text(text)
     if not text or len(text.strip()) < 20:
         return "Transcript too short to summarize."
 
@@ -101,21 +126,73 @@ def summarize_transcript(text):
 
 
 
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-
 sia = SentimentIntensityAnalyzer()
 
-def analyze_sentiment(comments, threshold=0.05):
+# def analyze_sentiment(comments, threshold=0.05):
+#     summary = {'positive': 0, 'neutral': 0, 'negative': 0}
+#     detailed = []
+
+#     for text in comments:
+#         text_clean = clean_text(text)
+#         score = sia.polarity_scores(text_clean)['compound']
+
+#         if score >= threshold:
+#             sentiment = 'positive'
+#         elif score <= -threshold:
+#             sentiment = 'negative'
+#         else:
+#             sentiment = 'neutral'
+
+#         summary[sentiment] += 1
+#         detailed.append({
+#             "text": text,
+#             "sentiment": sentiment,
+#             "confidence": round(abs(score), 3)
+#         })
+
+#     return summary, detailed
+
+def analyze_sentiment_enhanced(comments, threshold=0.05, use_ensemble=True):
+    """
+    Enhanced sentiment analysis with multiple approaches
+    
+    Args:
+        comments: List of text comments
+        threshold: Threshold for neutral classification
+        use_ensemble: Whether to use ensemble of multiple models
+    """
     summary = {'positive': 0, 'neutral': 0, 'negative': 0}
     detailed = []
 
     for text in comments:
-        text_clean = clean_text(text)
-        score = sia.polarity_scores(text_clean)['compound']
-
-        if score >= threshold:
+        if not text or text.strip() == '':
+            continue
+            
+        text_clean = enhanced_clean_text(text)
+        
+        if use_ensemble:
+            # Method 1: VADER
+            vader_score = sia.polarity_scores(text_clean)['compound']
+            
+            # Method 2: TextBlob
+            blob = TextBlob(text_clean)
+            textblob_score = blob.sentiment.polarity
+            
+            # Method 3: Rule-based adjustments
+            adjusted_score = apply_rule_based_adjustments(text_clean, vader_score)
+            
+            # Ensemble: Average the scores with weights
+            final_score = (vader_score * 0.4 + textblob_score * 0.4 + adjusted_score * 0.2)
+            
+        else:
+            # Use only VADER with adjustments
+            final_score = apply_rule_based_adjustments(text_clean, 
+                                                     sia.polarity_scores(text_clean)['compound'])
+        
+        # Classify sentiment
+        if final_score >= threshold:
             sentiment = 'positive'
-        elif score <= -threshold:
+        elif final_score <= -threshold:
             sentiment = 'negative'
         else:
             sentiment = 'neutral'
@@ -124,11 +201,109 @@ def analyze_sentiment(comments, threshold=0.05):
         detailed.append({
             "text": text,
             "sentiment": sentiment,
-            "confidence": round(abs(score), 3)
+            "confidence": round(abs(final_score), 3),
+            "raw_score": round(final_score, 3)
         })
 
     return summary, detailed
 
+def apply_rule_based_adjustments(text, base_score):
+    """Apply rule-based adjustments to improve accuracy"""
+    adjusted_score = base_score
+    
+    # Positive indicators that VADER might miss
+    positive_patterns = [
+        r'\b(love|amazing|awesome|fantastic|excellent|perfect|wonderful|great|good|nice|happy|glad|pleased)\b',
+        r'\b(thank|thanks|appreciate|grateful|blessed)\b',
+        r'\b(recommend|worth|helpful|useful)\b',
+        r'[!]{2,}',  # Multiple exclamation marks often indicate excitement
+        r':\)|:D|:-\)|:-D',  # Emoticons
+    ]
+    
+    # Negative indicators that VADER might miss
+    negative_patterns = [
+        r'\b(hate|awful|terrible|horrible|worst|bad|disappointed|angry|frustrated|annoyed)\b',
+        r'\b(problem|issue|complain|complaint|wrong|error|fail|broken)\b',
+        r':\(|:-\(',  # Sad emoticons
+    ]
+    
+    # Intensifiers
+    if re.search(r'\b(very|really|extremely|absolutely|totally|completely)\b', text):
+        adjusted_score *= 1.2
+    
+    # Check for positive patterns
+    positive_matches = sum(1 for pattern in positive_patterns if re.search(pattern, text))
+    if positive_matches > 0:
+        adjusted_score += 0.1 * positive_matches
+    
+    # Check for negative patterns
+    negative_matches = sum(1 for pattern in negative_patterns if re.search(pattern, text))
+    if negative_matches > 0:
+        adjusted_score -= 0.1 * negative_matches
+    
+    # Handle negation more carefully
+    negation_words = r'\b(not|no|never|neither|nobody|nothing|nowhere|none)\b'
+    if re.search(negation_words, text):
+        # If there's negation, flip the score partially
+        adjusted_score *= -0.5
+    
+    # Ensure score stays within bounds
+    adjusted_score = max(-1.0, min(1.0, adjusted_score))
+    
+    return adjusted_score
+
+def analyze_sentiment_with_context(comments, threshold=0.05, context_weight=0.1):
+    """
+    Analyze sentiment considering surrounding context
+    """
+    summary = {'positive': 0, 'neutral': 0, 'negative': 0}
+    detailed = []
+    
+    for i, text in enumerate(comments):
+        if not text or text.strip() == '':
+            continue
+            
+        text_clean = enhanced_clean_text(text)
+        base_score = sia.polarity_scores(text_clean)['compound']
+        
+        # Consider context from neighboring comments
+        context_score = 0
+        context_count = 0
+        
+        # Look at previous and next comments
+        for j in range(max(0, i-1), min(len(comments), i+2)):
+            if j != i and comments[j] and comments[j].strip():
+                neighbor_clean = enhanced_clean_text(comments[j])
+                neighbor_score = sia.polarity_scores(neighbor_clean)['compound']
+                context_score += neighbor_score
+                context_count += 1
+        
+        if context_count > 0:
+            context_score /= context_count
+            final_score = base_score + (context_score * context_weight)
+        else:
+            final_score = base_score
+        
+        # Apply rule-based adjustments
+        final_score = apply_rule_based_adjustments(text_clean, final_score)
+        
+        # Classify sentiment
+        if final_score >= threshold:
+            sentiment = 'positive'
+        elif final_score <= -threshold:
+            sentiment = 'negative'
+        else:
+            sentiment = 'neutral'
+
+        summary[sentiment] += 1
+        detailed.append({
+            "text": text,
+            "sentiment": sentiment,
+            "confidence": round(abs(final_score), 3),
+            "raw_score": round(final_score, 3)
+        })
+
+    return summary, detailed
 
 
 def plot_sentiment_pie(results):
