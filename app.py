@@ -1,7 +1,7 @@
 # app.py
 from flask import Flask, render_template, request
 from scraper import scrape_comments
-from sentiment import analyze_sentiment_enhanced, plot_sentiment_pie, generate_wordcloud, summarize_transcript
+from sentiment import analyze_sentiment_enhanced, plot_sentiment_pie, generate_wordcloud
 from selenium_transcript import get_transcript
 
 app = Flask(__name__)
