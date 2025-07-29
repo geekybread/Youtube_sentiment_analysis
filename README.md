@@ -24,7 +24,7 @@ Analyze the sentiment of comments on any YouTube video and visualize the results
 ## 💡 Features
 
 - ✅ Scrapes comments using **YouTube Data API v3**
-- ✅ Performs sentiment analysis using **VADER**
+- ✅ Performs sentiment analysis using **VADER** and **TextBlob**
 - ✅ Generates:
   - 📊 Pie chart of sentiments
   - ☁️ Word cloud of comment terms
