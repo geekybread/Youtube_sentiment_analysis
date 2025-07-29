@@ -1,6 +1,6 @@
 # 🎬 YouTube Sentiment Analyzer 🔍
 
-Analyze the sentiment of comments on any YouTube video using AI-powered models — and visualize the results with charts and word clouds.
+Analyze the sentiment of comments on any YouTube video and visualize the results with charts and word clouds.
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-Web%20App-red)
@@ -37,9 +37,9 @@ Analyze the sentiment of comments on any YouTube video using AI-powered models �
 
 | Layer       | Tech Used                     |
 |-------------|-------------------------------|
-| Frontend    | HTML, Jinja2 (via Flask)       |
+| Frontend    | HTML       |
 | Backend     | Python, Flask                  |
-| NLP Model   | VADER SentimentIntensityAnalyzer |
+| Model       | VADER, TextBlob |
 | Charts      | Matplotlib, WordCloud         |
 | Hosting     | Render.com                    |
 | Data Source | YouTube Data API v3           |
