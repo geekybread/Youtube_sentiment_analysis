@@ -11,7 +11,7 @@ Analyze the sentiment of comments on any YouTube video using AI-powered models â
 
 ## ðŸ“¸ Demo Preview
 
-<img src="static/sample_screenshot.png" width="600" alt="App Screenshot" />
+<img src="static/sample.png" width="600" alt="App Screenshot" />
 
 ---
 
