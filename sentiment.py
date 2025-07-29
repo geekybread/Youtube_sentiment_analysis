@@ -58,71 +58,71 @@ def enhanced_clean_text(text):
     
     return text
 
-HUGGINGFACE_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
-API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
-headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
+# HUGGINGFACE_TOKEN = os.environ.get("HUGGING_FACE_TOKEN")
+# API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+# headers = {"Authorization": f"Bearer {HUGGINGFACE_TOKEN}"}
 
-def chunk_text(text, chunk_size=700):
-    words = text.strip().split()
-    for i in range(0, len(words), chunk_size):
-        yield " ".join(words[i:i + chunk_size])
-
-
-def summarize_chunk(chunk):
-    prompt = f"Explain the main topic and purpose of this YouTube video transcript:\n{chunk}"
-    payload = {"inputs": prompt}
-
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
-        if response.status_code != 200:
-            print(f"[API Error] {response.status_code}: {response.text}")
-            return None
-
-        result = response.json()
-
-        if isinstance(result, list) and result:
-            # Support both Hugging Face response formats
-            return result[0].get("summary_text") or result[0].get("generated_text")
-        else:
-            print("[Unexpected Response]", result)
-            return None
-
-    except Exception as e:
-        print("[Request Error]", e)
-        return None
+# def chunk_text(text, chunk_size=700):
+#     words = text.strip().split()
+#     for i in range(0, len(words), chunk_size):
+#         yield " ".join(words[i:i + chunk_size])
 
 
-def clean_summary(text):
-    if "Use the weekly Newsquiz" in text:
-        return text.split("Use the weekly Newsquiz")[0].strip()
-    return text
+# def summarize_chunk(chunk):
+#     prompt = f"Explain the main topic and purpose of this YouTube video transcript:\n{chunk}"
+#     payload = {"inputs": prompt}
+
+#     try:
+#         response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+#         if response.status_code != 200:
+#             print(f"[API Error] {response.status_code}: {response.text}")
+#             return None
+
+#         result = response.json()
+
+#         if isinstance(result, list) and result:
+#             # Support both Hugging Face response formats
+#             return result[0].get("summary_text") or result[0].get("generated_text")
+#         else:
+#             print("[Unexpected Response]", result)
+#             return None
+
+#     except Exception as e:
+#         print("[Request Error]", e)
+#         return None
 
 
-def summarize_transcript(text):
-    if not text:
-        raise ValueError("Transcript is empty or unavailable.")
-    text=enhanced_clean_text(text)
-    if not text or len(text.strip()) < 20:
-        return "Transcript too short to summarize."
+# def clean_summary(text):
+#     if "Use the weekly Newsquiz" in text:
+#         return text.split("Use the weekly Newsquiz")[0].strip()
+#     return text
 
-    chunks = list(chunk_text(text, chunk_size=700))
-    summaries = []
 
-    for i, chunk in enumerate(chunks):
-        print(f"[Falcon] Analyzing chunk {i+1}/{len(chunks)}...")
-        summary = summarize_chunk(chunk)
-        if summary:
-            summaries.append(summary)
+# def summarize_transcript(text):
+#     if not text:
+#         raise ValueError("Transcript is empty or unavailable.")
+#     text=enhanced_clean_text(text)
+#     if not text or len(text.strip()) < 20:
+#         return "Transcript too short to summarize."
 
-    # Optional: Final compression summary
-    final_text = " ".join(summaries)
-    if len(final_text.split()) > 700:
-        final_text = " ".join(final_text.split()[:700])
+#     chunks = list(chunk_text(text, chunk_size=700))
+#     summaries = []
 
-    final_summary = summarize_chunk(final_text)
-    final_summary = clean_summary(final_summary)
+#     for i, chunk in enumerate(chunks):
+#         print(f"[Falcon] Analyzing chunk {i+1}/{len(chunks)}...")
+#         summary = summarize_chunk(chunk)
+#         if summary:
+#             summaries.append(summary)
 
-    return final_summary or "Could not generate context."
+#     # Optional: Final compression summary
+#     final_text = " ".join(summaries)
+#     if len(final_text.split()) > 700:
+#         final_text = " ".join(final_text.split()[:700])
+
+#     final_summary = summarize_chunk(final_text)
+#     final_summary = clean_summary(final_summary)
+
+#     return final_summary or "Could not generate context."
 
 
 
@@ -251,59 +251,6 @@ def apply_rule_based_adjustments(text, base_score):
     adjusted_score = max(-1.0, min(1.0, adjusted_score))
     
     return adjusted_score
-
-def analyze_sentiment_with_context(comments, threshold=0.05, context_weight=0.1):
-    """
-    Analyze sentiment considering surrounding context
-    """
-    summary = {'positive': 0, 'neutral': 0, 'negative': 0}
-    detailed = []
-    
-    for i, text in enumerate(comments):
-        if not text or text.strip() == '':
-            continue
-            
-        text_clean = enhanced_clean_text(text)
-        base_score = sia.polarity_scores(text_clean)['compound']
-        
-        # Consider context from neighboring comments
-        context_score = 0
-        context_count = 0
-        
-        # Look at previous and next comments
-        for j in range(max(0, i-1), min(len(comments), i+2)):
-            if j != i and comments[j] and comments[j].strip():
-                neighbor_clean = enhanced_clean_text(comments[j])
-                neighbor_score = sia.polarity_scores(neighbor_clean)['compound']
-                context_score += neighbor_score
-                context_count += 1
-        
-        if context_count > 0:
-            context_score /= context_count
-            final_score = base_score + (context_score * context_weight)
-        else:
-            final_score = base_score
-        
-        # Apply rule-based adjustments
-        final_score = apply_rule_based_adjustments(text_clean, final_score)
-        
-        # Classify sentiment
-        if final_score >= threshold:
-            sentiment = 'positive'
-        elif final_score <= -threshold:
-            sentiment = 'negative'
-        else:
-            sentiment = 'neutral'
-
-        summary[sentiment] += 1
-        detailed.append({
-            "text": text,
-            "sentiment": sentiment,
-            "confidence": round(abs(final_score), 3),
-            "raw_score": round(final_score, 3)
-        })
-
-    return summary, detailed
 
 
 def plot_sentiment_pie(results):
